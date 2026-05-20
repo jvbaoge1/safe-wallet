@@ -35,8 +35,6 @@ const CHAINS: ChainInfo[] = [
   { key: 'ETHEREUM', label: 'ETH', icon: '⟠', iconClass: 'chain-icon-eth', color: '#627eea', derivPath: "m/44'/60'/0'/0/0" },
   { key: 'TRON',     label: 'TRX', icon: '◈', iconClass: 'chain-icon-trx', color: '#ef4444', derivPath: "m/44'/195'/0'/0/0" },
   { key: 'BITCOIN',  label: 'BTC', icon: '₿', iconClass: 'chain-icon-btc', color: '#f0b90b', derivPath: "m/84'/0'/0'/0/0", extra: { network: 'MAINNET', segWit: 'VERSION_0' } },
-  { key: 'SOLANA',   label: 'SOL', icon: '◎', iconClass: 'chain-icon-sol', color: '#9945ff', derivPath: "m/44'/501'/0'/0'" },
-  { key: 'SUI',      label: 'SUI', icon: '💧', iconClass: 'chain-icon-sui', color: '#6bc9e6', derivPath: "m/44'/784'/0'/0'/0'" },
 ];
 
 let activityCounter = 0;
@@ -100,25 +98,10 @@ function App() {
         ...(c.extra || {}),
       }));
 
-      let accs: Account[] = [];
-      try {
-        accs = JSON.parse(derive_accounts(JSON.stringify({
-          key: password,
-          derivations,
-        })));
-      } catch (deriveErr: any) {
-        // SOL/SUI may not be supported by tcx-wasm, fallback to core 3 chains
-        console.warn('derive_accounts partial fail:', deriveErr.message);
-        const coreChains = CHAINS.filter(c => ['ETHEREUM', 'TRON', 'BITCOIN'].includes(c.key));
-        accs = JSON.parse(derive_accounts(JSON.stringify({
-          key: password,
-          derivations: coreChains.map(c => ({
-            chain: c.key,
-            derivationPath: c.derivPath,
-            ...(c.extra || {}),
-          })),
-        })));
-      }
+      const accs: Account[] = JSON.parse(derive_accounts(JSON.stringify({
+        key: password,
+        derivations,
+      })));
       setAccounts(accs);
       setMnemonic('');
       setLoading('');
@@ -338,7 +321,7 @@ function App() {
                     })}
                   </div>
 
-                  {currentAccount ? (
+                  {currentAccount && (
                     <>
                       <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:10}}>
                         <span className={`chain-icon ${currentChainInfo.iconClass}`}>{currentChainInfo.icon}</span>
@@ -353,11 +336,6 @@ function App() {
                         Derivation: <code style={{color:'var(--text-secondary)'}}>{currentAccount.derivationPath}</code>
                       </div>
                     </>
-                  ) : (
-                    <div className="empty-state">
-                      <div className="icon">{currentChainInfo.icon}</div>
-                      <div>{currentChainInfo.label} derivation not supported by current tcx-wasm version</div>
-                    </div>
                   )}
                 </div>
 
@@ -380,17 +358,6 @@ function App() {
                       </div>
                     );
                   })}
-                  {CHAINS.filter(c => !accounts.some(a => a.chain === c.key)).map(c => (
-                    <div key={c.key} className="balance-card" style={{opacity: 0.35}}>
-                      <div className="balance-icon" style={{background: `${c.color}10`, color: c.color}}>
-                        {c.icon}
-                      </div>
-                      <div className="balance-info">
-                        <div className="balance-name">{c.label}</div>
-                        <div className="balance-desc">Not supported by tcx-wasm</div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
 
                 {/* Transfer UI */}
@@ -654,7 +621,7 @@ function App() {
                 <p style={{marginTop:10}}>Features:</p>
                 <ul style={{paddingLeft:20, marginTop:4}}>
                   <li>Integration with <strong style={{color:'var(--accent-gold)'}}>Token Core (tcx-wasm)</strong> for local key management</li>
-                  <li>Multi-chain account derivation (ETH, TRX, BTC + SOL, SUI)</li>
+                  <li>Multi-chain account derivation (ETH, TRX, BTC)</li>
                   <li>Built-in URL phishing scanner & transaction risk assessment</li>
                   <li>Security checklist for wallet safety best practices</li>
                   <li>100% client-side — zero data leaves the browser</li>
