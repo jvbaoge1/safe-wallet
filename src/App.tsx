@@ -309,22 +309,12 @@ function App() {
                   />
                 </div>
 
-                <div className="input-group">
-                  <label>Mnemonic <span style={{opacity:0.5}}>(optional — leave empty for random)</span></label>
-                  <textarea
-                    className="input"
-                    placeholder="e.g. inject kidney empty canal shadow pact comfort wife crush horse wife sketch"
-                    value={mnemonicInput}
-                    onChange={e => setMnemonicInput(e.target.value)}
-                  />
-                </div>
-
                 <div className="alert alert-info" style={{fontSize:11}}>
                   🔒 100% local — zero data leaves your browser. Powered by Token Core WASM.
                 </div>
 
                 <button className="btn btn-primary" onClick={handleCreateWallet} disabled={!password || !!loading}>
-                  {mnemonicInput.trim() ? '↓ Import Wallet' : '⚡ Create New Wallet'}
+                  ⚡ Create New Wallet
                 </button>
               </div>
             ) : (
