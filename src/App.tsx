@@ -39,6 +39,8 @@ const CHAINS: ChainInfo[] = [
 
 let activityCounter = 0;
 
+const STORAGE_KEY = 'safewallet_keystore';
+
 function App() {
   const [wasmReady, setWasmReady] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('wallet');
@@ -80,6 +82,31 @@ function App() {
       .catch(err => setError('Failed to init tcx-wasm: ' + err.message));
   }, []);
 
+  // Restore wallet from localStorage after WASM is ready
+  useEffect(() => {
+    if (!wasmReady) return;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        cache_keystore(saved);
+        const accs: Account[] = JSON.parse(derive_accounts(JSON.stringify({
+          key: '',  // empty key for cached keystore
+          derivations: CHAINS.map(c => ({
+            chain: c.key,
+            derivationPath: c.derivPath,
+            ...(c.extra || {}),
+          })),
+        })));
+        setKeystore(saved);
+        setAccounts(accs);
+        setSuccess('Wallet restored from local storage');
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [wasmReady]);
+
   // Create wallet
   const handleCreateWallet = useCallback(async () => {
     if (!password) { setError('Please set a password'); return; }
@@ -91,6 +118,7 @@ function App() {
       const ks = create_keystore(JSON.stringify(params));
       setKeystore(ks);
       cache_keystore(ks);
+      localStorage.setItem(STORAGE_KEY, ks);
 
       const derivations = CHAINS.map(c => ({
         chain: c.key,
@@ -116,19 +144,22 @@ function App() {
 
   // Export mnemonic
   const handleExportMnemonic = useCallback(() => {
-    if (!keystore || !password) { setError('Wallet not unlocked'); return; }
+    if (!keystore) { setError('Wallet not unlocked'); return; }
+    if (!password) { setError('Please enter your password first to unlock'); return; }
     try {
+      cache_keystore(keystore);
       const result = JSON.parse(export_mnemonic(JSON.stringify({ key: password })));
       setMnemonic(result.mnemonic);
       addActivity('👁', 'Mnemonic Exported', 'Displayed for backup');
     } catch (e: any) {
-      setError(e.message || 'Failed to export mnemonic');
+      setError(e.message || 'Failed to export mnemonic — wrong password?');
     }
   }, [keystore, password, addActivity]);
 
   // Sign message
   const handleSignMessage = useCallback(() => {
-    if (!keystore || !password || !signMessageText) { setError('Fill in all fields'); return; }
+    if (!keystore || !signMessageText) { setError('Fill in all fields'); return; }
+    if (!password) { setError('Please enter your password first to unlock'); return; }
     setLoading('Signing...');
     try {
       const chain = selectedChain;
@@ -185,6 +216,7 @@ function App() {
   // Clear wallet
   const handleClear = useCallback(() => {
     clear_cached_keystore();
+    localStorage.removeItem(STORAGE_KEY);
     setKeystore('');
     setMnemonic('');
     setAccounts([]);
@@ -302,6 +334,26 @@ function App() {
               </div>
             ) : (
               <>
+                {/* Password unlock for restored wallet */}
+                {keystore && !password && (
+                  <div className="card">
+                    <div className="card-title"><span className="icon">🔓</span> Wallet Restored</div>
+                    <p style={{fontSize:12, color:'var(--text-secondary)', marginBottom:12, lineHeight:1.5}}>
+                      Your wallet was restored from local storage. Enter your password to unlock signing and mnemonic export.
+                    </p>
+                    <div className="input-group">
+                      <label>Password</label>
+                      <input
+                        type="password"
+                        className="input"
+                        placeholder="Enter your wallet password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Chain Selector */}
                 <div className="card">
                   <div className="card-title"><span className="icon">🔗</span> My Accounts</div>
